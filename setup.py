@@ -20,7 +20,7 @@ with open("README.md", "r") as fh:
             'altair==3.1.0',
             'matplotlib==3.1.0',
             'fuzzyset==0.0.19',
-            'nltk==3.4.3',
+            'nltk==3.4.5',
             'pandas==0.24.2',
             'tqdm==4.32.2',
             ],
