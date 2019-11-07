@@ -69,20 +69,25 @@ class Report():
                 'justpass_score': 0,
                 }
             for line in sample:
-                if line.count(':') > 2:
+                if line.count(':') > 1:
                     score['username_score'] += 1
                 elif line.count(':') == 1:
                     score['hashpass_score'] += 1
                 else:
                     score['justpass_score'] += 1
             file_type = max(score.keys(), key=(lambda k: score[k]))
+            if file_type == 'username_score' and sample[1].count(':') != 2:
+                raise SyntaxError('Invalid password file format')
             fh_cracked.seek(0)
             pass_file = cracked_path.parent.joinpath(
                                                     '{}.clean'.format(self.name))
             with pass_file.open('w', encoding='-8859-') as fh_pass:
-                if file_type != 'justpass_score':
+                if file_type == 'hashpass_score':
                     for line in fh_cracked:
                         fh_pass.write(line.split(':')[-1])
+                elif file_type == 'username_score':
+                    for line in fh_cracked:
+                        fh_pass.write(line.split(':')[2])
                 else:
                     pass_file = cracked_path
         return pass_file
@@ -335,7 +340,7 @@ class Report():
 if __name__ == '__main__':
     import nltk
     nltk.download('wordnet')
-    cracked_path = Path('../tests/boaters.com.cracked')
+    cracked_path = Path('../tests/5k_linkedin_sample.txt')
     lang = 'EN'
     report = Report(cracked_path=cracked_path, lang=lang, lists='./lists/')
     gen = report.report_gen()
