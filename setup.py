@@ -13,7 +13,7 @@ with open("README.md", "r") as fh:
         description='Python port of Pipal for password analytics',
         long_description=long_description,
         long_description_content_type="text/markdown",
-        #url="https://github.com/f0cker/pypal",
+        url="https://github.com/f0cker/pypal",
         #package_data={'pypal': ['lists/']},
         #include_package_data=True,
         install_requires=[
@@ -23,6 +23,7 @@ with open("README.md", "r") as fh:
             'nltk==3.4.5',
             'pandas==0.24.2',
             'tqdm==4.32.2',
+            'vega-datasets==0.7.0',
             ],
         classifiers=[
             "Programming Language :: Python :: 3",
