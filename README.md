@@ -35,13 +35,12 @@ Features/Metrics:
 - [x] Top 10 cracked passwords
 - [x] Top x passwords by length
 - [x] Top x base dictionary words
-
-
-Todo:
-
 - [x] Top x base words by city
 - [x] Top x base words by country
 - [x] Top x base words by name
+- [x] Geomap using location coordinates mapped from matched basewords by location
+
+Todo:
 
 - [ ] password complexity (character sets)
 - [ ] crack time
@@ -58,7 +57,6 @@ Todo:
 - [ ] top 10 end numbers 1 - 6
 - [ ] top 10 most common numerical patterns
 - [ ] Months/Year/Day
-- [x] Geomap using location coordinates mapped from matched basewords by location
 - [ ] show users with shared passwords
 - [ ] show users with blank passwords
 
