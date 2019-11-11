@@ -39,13 +39,14 @@ Features/Metrics:
 
 Todo:
 
-- [ ] Top x base words by city
-- [ ] Top x base words by country
+- [x] Top x base words by city
+- [x] Top x base words by country
+- [x] Top x base words by name
 
 - [ ] password complexity (character sets)
 - [ ] crack time
-- [ ] based on a name
-- [ ] based on a country/place
+- [ ] count based on a name
+- [ ] count of passwords based on a country/place
 - [ ] based on multiple words
 - [ ] based on common password pattern
 - [ ] top 10 most popular words/name 
@@ -57,7 +58,7 @@ Todo:
 - [ ] top 10 end numbers 1 - 6
 - [ ] top 10 most common numerical patterns
 - [ ] Months/Year/Day
-- [ ] Geomap using location coordinates mapped from matched basewords by location
+- [x] Geomap using location coordinates mapped from matched basewords by location
 - [ ] show users with shared passwords
 - [ ] show users with blank passwords
 
