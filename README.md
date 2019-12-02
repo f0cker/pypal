@@ -59,6 +59,8 @@ Todo:
 - [ ] Months/Year/Day
 - [ ] show users with shared passwords
 - [ ] show users with blank passwords
+- [ ] remove vega editor link
+
 
 AD dump analysis:
 

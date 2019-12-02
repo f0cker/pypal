@@ -446,9 +446,10 @@ class Report():
         # generate base words stats and graph
         base_freq = self.dict_checker(self.lang_dict,
                                       self.baselang_file,
+                                      #lem=False
                                       col='Base Word')
         base_chart = self.build_graph(base_freq,
-                                      title='Top 10 Passwords by Base'
+                                      title='Top 10 Passwords by Base '
                                             'Words (English)',
                                       graph_type='bar',
                                       x_key='Base Word', y_key='Count')
@@ -510,4 +511,3 @@ if __name__ == '__main__':
     lang = 'EN'
     report = Report(cracked_path=cracked_path, lang=lang, lists='./lists/')
     gen = report.report_gen()
-    #print(gen)
