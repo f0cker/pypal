@@ -30,8 +30,8 @@ class Report():
         String location of the lists directory under ./pypal/src.
         These are the dictionaries used by Pypal
 
-    cracked_path: Path
-        Pathlib Path of cracked hashes to use for reporting on.
+    cracked_path: Path | str
+        Pathlib Path or string path of cracked hashes to use for reporting on.
 
     Returns
     ---------
@@ -41,6 +41,8 @@ class Report():
     """
 
     def __init__(self, cracked_path=None, lang='EN', lists=None):
+        if type(cracked_path) == str:
+            cracked_path = Path(cracked_path)
         self.name = cracked_path.stem
         self.file_dir = cracked_path.parent
         self.lang = lang
@@ -53,7 +55,7 @@ class Report():
         self.baselang_file = self.file_dir.joinpath('{}_basewords.txt'.format(
                                                      self.name))
         self.basecountry_file = self.file_dir.joinpath('{}_basecountry.txt'.format(
-                                                     self.name))
+                                                       self.name))
         self.basecity_file = self.file_dir.joinpath('{}_basecity.txt'.format(
                                                      self.name))
         self.len_file = self.file_dir.joinpath('{}_len.txt'.format(
