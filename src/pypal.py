@@ -16,7 +16,7 @@ except ImportError:
     from fuzzyset import FuzzySet
 
 
-class Report():
+class Report(object):
     """
     Class for creating password dump analysis reports
 
@@ -40,13 +40,18 @@ class Report():
         i.e. None, Working, Generated
     """
 
-    def __init__(self, cracked_path=None, lang='EN', lists=None):
+    def __init__(self, cracked_path=None, lang='EN', lists=None,
+                 hash_path=None):
         if type(cracked_path) == str:
             cracked_path = Path(cracked_path)
+        if type(hash_path) == str:
+            sh_path = Path(hash_path)
+        self.cracked_path = cracked_path
+        self.hash_path = hash_path
         self.name = cracked_path.stem
         self.file_dir = cracked_path.parent
         self.lang = lang
-        self.pass_file = self.pass_format(cracked_path)
+        self.pass_file = self.pass_format(cracked_path, hash_path=hash_path)
         self.lists = lists
         self.lang_dict = Path(lists).joinpath('{}_list.txt'.format(lang))
         self.country_dict = Path(lists).joinpath('Country_list.txt')
@@ -61,45 +66,38 @@ class Report():
         self.len_file = self.file_dir.joinpath('{}_len.txt'.format(
                                                self.name))
 
-    def pass_format(self, cracked_path):
+    def pass_format(self, cracked_path, hash_path=None):
         """
         Check the format of the cracked hash/password file
         and if required format it
 
+        Arguments
+        ---------
+        cracked_path: Path
+            location of cracked hashes file
+        hash_path: Path
+            location of original hash file
+
         Returns
         ------
-        pass_file: Path
-            Location of the formatted file
+        pass_file: Path/boolean
+            Location of the formatted file or false if error
         """
-        with cracked_path.open('r', encoding='-8859-') as fh_cracked:
-            sample = [next(fh_cracked) for i in range(10)]
-            score = {
-                'username_score': 0,
-                'hashpass_score': 0,
-                'justpass_score': 0,
-                }
-            for line in sample:
-                if line.count(':') > 1:
-                    score['username_score'] += 1
-                elif line.count(':') == 1:
-                    score['hashpass_score'] += 1
-                else:
-                    score['justpass_score'] += 1
-            file_type = max(score.keys(), key=(lambda k: score[k]))
-            if file_type == 'username_score' and sample[1].count(':') != 2:
-                raise SyntaxError('Invalid password file format')
-            fh_cracked.seek(0)
-            pass_file = cracked_path.parent.joinpath(
-                                                    '{}.clean'.format(self.name))
-            with pass_file.open('w', encoding='-8859-') as fh_pass:
-                if file_type == 'hashpass_score':
+        if self.cracked_path:
+            with cracked_path.open('r', encoding='-8859-') as fh_cracked:
+                pass_file = cracked_path.parent.joinpath(
+                                '{}.clean'.format(self.name))
+                with pass_file.open('w', encoding='-8859-') as fh_pass:
                     for line in fh_cracked:
-                        fh_pass.write(line.split(':')[-1])
-                elif file_type == 'username_score':
-                    for line in fh_cracked:
-                        fh_pass.write(line.split(':')[2])
-                else:
-                    pass_file = cracked_path
+                            for line in fh_cracked:
+                                if len(line.split(':')) > 1:
+                                        fh_pass.write(line.split(':')[-1])
+                                else:
+                                    pass_file = cracked_path
+                                    break
+
+        else:
+            pass_file = False
         return pass_file
 
     def cleaner(self, word):
@@ -122,6 +120,129 @@ class Report():
                 word = word[:-1]
                 word = self.cleaner(word)
         return word
+
+    def get_ntds_stats(self, words_file=None,
+                       ntds_file=None, hash_file=None):
+
+        """
+        Load a ntds.dit file, hash list and cracked password list,
+        then return basic information, such as:
+            stats relating to ntds file:
+                machine accounts count
+                user accounts count
+                accounts enabled count
+            number of enabled users password matching supplied string/s (i.e., adm, admin)
+            number of enabled users in group supplied in string (i.e., 'Domain Admins')
+            number & percentage of passwords not compliant
+            number of those which are disabled
+            number & percentage of LM hashes
+            number of accounts that are disabled
+            all disabled accounts?
+            cracked enabled only?
+
+        Arguments
+        --------
+        words_file: Path
+            Pathlib path to file containing passwords to analyse
+        ntds_file: Path
+            Pathlib path to extracted NTDS.dit file
+        hash_file: Path
+            Pathlib path to hashes file
+        column: str
+            Name of the colummn, usually 'Password'
+        topx: int
+            How many to show, default is top 10
+
+        Returns
+        ------
+        fdist: list
+            Frequency distribution stats
+        """
+        print('test')
+
+    def get_stats(self, column=None, match=None):
+        """
+        Load a hash list and cracked password list,
+        then return basic information, such as:
+            total hash count
+            total cracked
+            percentage cracked
+            of which were duplicates
+            number of and users with duplicate hashes
+            number of and users with blank passwords
+
+        Arguments
+        --------
+        words_file: Path
+            Pathlib path to file containing passwords to analyse
+        hash_file: Path
+            Pathlib path to hashes file
+        column: str
+            Name of the colummn, usually 'Password'
+
+        Returns
+        ------
+        fdist: list
+            Frequency distribution stats
+        """
+        ###***RUN HASHCAT --SHOW FIRST HERE
+        if self.cracked_path:
+            with self.cracked_path.open('r', encoding='-8859-') as fh_cracked:
+                cracked = [line.strip('\n').split(':') for line in fh_cracked]
+            if type(cracked[0]) == list and len(cracked[0]) == 4:
+                # pwdump format
+                df_cracked = pandas.DataFrame(cracked, columns=['User', 'UserID', 'LM', 'Hash'])
+            elif type(cracked[0]) == list and len(cracked[0]) == 3:
+                df_cracked = pandas.DataFrame(cracked, columns=['User', 'Hash', 'Password'])
+            elif type(cracked[0]) == list and len(cracked[0]) == 2:
+                df_cracked = pandas.DataFrame(cracked, columns=['Hash', 'Password'])
+            else:
+                print('Error creating dataframe')
+        else:
+            df_cracked = None
+        if self.hash_path:
+            with self.hash_path.open('r', encoding='-8859-') as fh_hashes:
+                try:
+                    hashes = [line.strip('\n').split(':')[0:4] for line in fh_hashes]
+                except Exception as err:
+                    print(err)
+                    hashes = [line.strip('\n').split(':') for line in fh_hashes]
+            if type(hashes[0]) == list and len(hashes[0]) == 4:
+                # pwdump format
+                df_hashes = pandas.DataFrame(hashes, columns=['User', 'UserID', 'LM', 'Hash'])
+            elif type(hashes[0]) == list and len(hashes[0]) == 3:
+                df_hashes = pandas.DataFrame(hashes, columns=['User', 'Hash', 'Password'])
+            elif type(hashes[0]) == list and len(hashes[0]) == 2:
+                df_hashes = pandas.DataFrame(hashes, columns=['Hash', 'Password'])
+            else:
+                print('Error creating dataframe')
+        else:
+            df_hashes = None
+        stats_dict = {}
+        merged = pandas.merge(df_hashes, df_cracked, how='left', on='User')
+        print(merged.info())
+        dupe_count = merged.duplicated(subset='Hash_x').sum()
+        dupe_pass = merged[merged['Password'].notna()].duplicated(subset='Password').sum()
+        blank_count = merged['Hash_x'].isin(['31d6cfe0d16ae931b73c59d7e0c089c0']).sum()
+        total_cracked = merged['Password'].notna().sum()
+        total = merged.shape[0]
+        lm = merged[-merged['LM'].isin(['aad3b435b51404eeaad3b435b51404ee'])]
+        lm_count = len(lm)
+        if match:
+            if type(match) == list: 
+                match_count = merged['User'].isin(match).sum()
+                stats_dict['Matched Accounts'] = match_count
+        stats_dict['Total Hashes'] = total
+        stats_dict['Total Cracked'] = total_cracked
+        stats_dict['Duplicate Hashes'] = dupe_count
+        stats_dict['Duplicate Cracked Passwords'] = dupe_pass
+        stats_dict['Blank Passwords'] = blank_count
+        stats_dict['LM Hashes'] = lm_count
+        #dupes = merged[merged.duplicated(subset='Hash_x')]
+        #dupes.to_csv('/tmp/test.txt')
+        #print(merged[dupes['Password'].notna()])
+        #print(dir(merged[merged.duplicated(subset='Hash_x')]['Password']))
+        return stats_dict
 
     def get_freq(self, column=None, topx=None, words_file=None):
         """
@@ -148,8 +269,7 @@ class Report():
                                   columns=[column, 'Count'])
         return df_com
 
-    def base_check(self, dict_list, word_list,
-                   lem=True):
+    def base_check(self, dict_list, word_list, lem=True):
         """
         Check probability that the word is based on a dictionary word
 
@@ -311,7 +431,6 @@ class Report():
             print('File load error: {}'.format(err))
             return False
 
-
     def build_graph(self, dframe=None, title=None, graph_type=None,
                     x_key=None, y_key=None):
         """
@@ -361,9 +480,9 @@ class Report():
         Arguments
         --------
         pass_file: Path
-            Pathfile Path to file containing passwords to check length of
+            File containing passwords to check length of
         len_file: Path
-            Pathfile Path to file to write stats to
+            File to write stats to
         Returns
         -------
         status: object
@@ -439,6 +558,8 @@ class Report():
             </body>
             </html>
             """
+        # generate general stats chart
+        stats = self.get_stats()
         # generate freq distribution graph (top x passwords)
         freq_df = self.get_freq(column='Password',
                                 topx=10, words_file=self.pass_file)
@@ -466,7 +587,6 @@ class Report():
                                          col='Country',
                                          min_score=0.9,
                                          lem=False)
-        #print(country_freq)
         country_chart = self.build_graph(country_freq,
                                          title="Top 10 Passwords by country",
                                          graph_type='bar',
@@ -477,16 +597,14 @@ class Report():
                                       col='City',
                                       min_score=0.9,
                                       lem=False)
-        #print(city_freq)
         city_chart = self.build_graph(city_freq,
                                       title="Top 10 Passwords by city",
                                       graph_type='bar',
                                       x_key='City', y_key='Count')
         gps_df = self.gps_lookup(city_freq)
-        #print(gps_df)
         city_gps_chart = self.build_geograph(dframe=gps_df)
         with open(self.pass_file.parent.joinpath('{}_report.html'.format(
-                                                 self.pass_file.stem)), 'w') as fh_report:
+                  self.pass_file.stem)), 'w') as fh_report:
             fh_report.write(report_template.format(
                 vega_version=alt.VEGA_VERSION,
                 vegalite_version=alt.VEGALITE_VERSION,
@@ -497,19 +615,26 @@ class Report():
                 spec4=country_chart.to_json(indent=None),
                 spec5=city_chart.to_json(indent=None),
                 spec6=city_gps_chart.to_json(indent=None),
+                spec7=stats.to_json(indent=None),
             ))
             return {'topx_chart': json.loads(top_chart.to_json(indent=None)),
                     'len_chart': json.loads(len_chart.to_json(indent=None)),
                     'base_chart': json.loads(base_chart.to_json(indent=None)),
                     'country_chart': json.loads(country_chart.to_json(indent=None)),
                     'city_chart': json.loads(city_chart.to_json(indent=None)),
-                    'city_gps_chart': json.loads(city_gps_chart.to_json(indent=None))}
+                    'city_gps_chart': json.loads(city_gps_chart.to_json(indent=None)),
+                    'stats': json.loads(stats.to_json(indent=None))}
 
 
 if __name__ == '__main__':
     import nltk
     nltk.download('wordnet')
-    cracked_path = Path('../tests/5k_linkedin_sample.txt')
+    #cracked_path = Path('../tests/5k_linkedin_sample.txt')
     lang = 'EN'
-    report = Report(cracked_path=cracked_path, lang=lang, lists='./lists/')
-    gen = report.report_gen()
+    cracked_path = Path('../tests/test_customer_domain.cracked')
+    hash_path = Path('../tests/test_customer_domain.hashes')
+
+    report = Report(cracked_path=cracked_path, lang=lang, lists='./lists/', hash_path=hash_path)
+    stats = report.get_stats()
+    print(stats)
+    #gen = report.report_gen()
