@@ -7,3 +7,4 @@
 *build*
 *dist*
 .pytest_cache
+tests/test_customer_domain_*

@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
     setup(
         name='Pypal',
         author='Daniel Turner',
-        version='0.0.1a',
+        version='0.0.1',
         packages=['pypal'],
         package_dir={'pypal': 'src'},
         description='Python port of Pipal for password analytics',
