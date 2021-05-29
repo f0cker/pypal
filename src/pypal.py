@@ -164,7 +164,7 @@ class Report(object):
         """
         print('test')
 
-    def get_stats(self, column=None, match=None):
+    def get_stats(self, policy=None, match=None, ):
         """
         Load a hash list and cracked password list,
         then return basic information, such as:
@@ -177,19 +177,27 @@ class Report(object):
 
         Arguments
         --------
-        words_file: Path
-            Pathlib path to file containing passwords to analyse
-        hash_file: Path
-            Pathlib path to hashes file
-        column: str
-            Name of the colummn, usually 'Password'
+        policy: Dict
+            Dictionary containing password policy for the domain, supports keys:
+                length: int,
+
+        match: List
+            List of usernames which are considered sensitive (DA EA etc),
+            these can be gathered with PowerView or other tools
 
         Returns
         ------
-        fdist: list
-            Frequency distribution stats
+        stats_dict: Dict or False
+            Dictionary containing the results, in the following format
+            {'Sensitive Account Hashes': 36,
+            'Sensitive Passwords Cracked': 1,
+            'Total Hashes': 88803,
+            'Total Cracked': 9045,
+            'Duplicate Hashes': 780,
+            'Duplicate Cracked Passwords': 462,
+            'Blank Passwords': 3,
+            'LM Hashes': 227}
         """
-        ###***RUN HASHCAT --SHOW FIRST HERE
         if self.cracked_path:
             with self.cracked_path.open('r', encoding='-8859-') as fh_cracked:
                 cracked = [line.strip('\n').split(':') for line in fh_cracked]
@@ -222,6 +230,8 @@ class Report(object):
                 print('Error creating dataframe')
         else:
             df_hashes = None
+        if not all(type(df) == pandas.DataFrame for df in [df_hashes, df_cracked]):
+            return False
         stats_dict = {}
         merged = pandas.merge(df_hashes, df_cracked, how='left', on='User')
         dupe_count = merged.duplicated(subset='Hash_x').sum()
@@ -232,13 +242,29 @@ class Report(object):
         lm = merged[-merged['LM'].isin(['aad3b435b51404eeaad3b435b51404ee'])]
         lm_count = len(lm)
         if match:
-            if type(match) == list: 
-                match_count = merged['User'].isin(match).sum()
-                stats_dict['Matched Accounts'] = match_count
+            if type(match) == list:
+                match_count = merged['User'].str.contains('|'.join(match)).sum()
+                stats_dict['Sensitive Account Hashes'] = match_count
+                match_pass = merged['Password'][merged['User'].str.contains('|'.join(match))].notna().sum()
+                stats_dict['Sensitive Passwords Cracked'] = match_pass
             else:
-                stats_dict['Matched Accounts'] = 0
+                stats_dict['Sensitive Account Hashes'] = 0
+                stats_dict['Sensitive Passwords Cracked'] = 0
         else:
-            stats_dict['Matched Accounts'] = 0
+            stats_dict['Sensitive Account Hashes'] = 0
+            stats_dict['Sensitive Passwords Cracked'] = 0
+        if policy:
+            if type(policy) == dict:
+                for key, val in policy:
+                    if key == 'length':
+                        pol_length = merged[merged['Password']].str.len().lt(val).sum()
+                        stats_dict['Policy Non-compliant Passwords'] = pol_length
+                    else:
+                        stats_dict['Policy Non-compliant Passwords'] = 0
+            else:
+                stats_dict['Policy Non-compliant Passwords'] = 0
+        else:
+            stats_dict['Policy Non-compliant Passwords'] = 0
         stats_dict['Total Hashes'] = total
         stats_dict['Total Cracked'] = total_cracked
         stats_dict['Duplicate Hashes'] = dupe_count
@@ -346,7 +372,6 @@ class Report(object):
             checker = self.base_check(dict_list, pass_list, lem=lem)
             with out_file.open('w') as fh_export:
                 for check in tqdm(checker, total=len(pass_list)):
-                    #print(check)
                     if isinstance(check[1], list):
                         score, word = check[1][0]
                         if score > min_score:
@@ -498,7 +523,7 @@ class Report(object):
                                      encoding='-8859-') as fh_pass_file:
                 with open(self.len_file, 'w') as fh_out_file:
                     for passwd in fh_pass_file:
-                        fh_out_file.write(str(len(passwd)) + '\n')
+                        fh_out_file.write(str(len(passwd.strip())) + '\n')
             freq_df = self.get_freq(column='Length',
                                     topx=10, words_file=self.len_file)
             return freq_df
@@ -566,65 +591,76 @@ class Report(object):
         # generate freq distribution graph (top x passwords)
         freq_df = self.get_freq(column='Password',
                                 topx=10, words_file=self.pass_file)
-        top_chart = self.build_graph(freq_df, title="Top 10 Passwords",
-                                     graph_type='bar', x_key='Password',
-                                     y_key='Count')
+        if type(freq_df) == pandas.DataFrame:
+            top_chart = self.build_graph(freq_df, title="Top 10 Passwords",
+                                         graph_type='bar', x_key='Password',
+                                         y_key='Count')
         # generate base words stats and graph
         base_freq = self.dict_checker(self.lang_dict,
                                       self.baselang_file,
                                       #lem=False
                                       col='Base Word')
-        base_chart = self.build_graph(base_freq,
-                                      title='Top 10 Passwords by Base '
-                                            'Words (English)',
-                                      graph_type='bar',
-                                      x_key='Base Word', y_key='Count')
+        if type(base_freq) == pandas.DataFrame:
+            base_chart = self.build_graph(base_freq,
+                                          title='Top 10 Passwords by Base '
+                                                'Words (English)',
+                                          graph_type='bar',
+                                          x_key='Base Word', y_key='Count')
         # generate word length stats and graph
         len_freq = self.check_len()
-        len_chart = self.build_graph(len_freq, title='Top 10 Password Lengths',
-                                     graph_type='bar', x_key='Length',
-                                     y_key='Count')
+        if type(len_freq) == pandas.DataFrame:
+            len_chart = self.build_graph(len_freq, title='Top 10 Password Lengths',
+                                         graph_type='bar', x_key='Length',
+                                         y_key='Count')
         # generate country based words stats and graph
         country_freq = self.dict_checker(self.country_dict,
                                          self.basecountry_file,
                                          col='Country',
                                          min_score=0.9,
                                          lem=False)
-        country_chart = self.build_graph(country_freq,
-                                         title="Top 10 Passwords by country",
-                                         graph_type='bar',
-                                         x_key='Country', y_key='Count')
+        if type(country_freq) == pandas.DataFrame:
+            country_chart = self.build_graph(country_freq,
+                                             title="Top 10 Passwords by country",
+                                             graph_type='bar',
+                                             x_key='Country', y_key='Count')
         # generate city based words stats and graph
         city_freq = self.dict_checker(self.city_dict,
                                       self.basecity_file,
                                       col='City',
                                       min_score=0.9,
                                       lem=False)
-        city_chart = self.build_graph(city_freq,
-                                      title="Top 10 Passwords by city",
-                                      graph_type='bar',
-                                      x_key='City', y_key='Count')
+        if type(city_freq) == pandas.DataFrame:
+            city_chart = self.build_graph(city_freq,
+                                          title="Top 10 Passwords by city",
+                                          graph_type='bar',
+                                          x_key='City', y_key='Count')
         gps_df = self.gps_lookup(city_freq)
-        city_gps_chart = self.build_geograph(dframe=gps_df)
-        with open(self.pass_file.parent.joinpath('{}_report.html'.format(
-                  self.pass_file.stem)), 'w') as fh_report:
-            fh_report.write(report_template.format(
-                vega_version=alt.VEGA_VERSION,
-                vegalite_version=alt.VEGALITE_VERSION,
-                vegaembed_version=alt.VEGAEMBED_VERSION,
-                spec1=top_chart.to_json(indent=None),
-                spec2=len_chart.to_json(indent=None),
-                spec3=base_chart.to_json(indent=None),
-                spec4=country_chart.to_json(indent=None),
-                spec5=city_chart.to_json(indent=None),
-                spec6=city_gps_chart.to_json(indent=None)
-            ))
-            return {'topx_chart': json.loads(top_chart.to_json(indent=None)),
-                    'len_chart': json.loads(len_chart.to_json(indent=None)),
-                    'base_chart': json.loads(base_chart.to_json(indent=None)),
-                    'country_chart': json.loads(country_chart.to_json(indent=None)),
-                    'city_chart': json.loads(city_chart.to_json(indent=None)),
-                    'city_gps_chart': json.loads(city_gps_chart.to_json(indent=None))}
+        if type(gps_df) == pandas.DataFrame:
+            city_gps_chart = self.build_geograph(dframe=gps_df)
+        try:
+            with open(self.pass_file.parent.joinpath('{}_report.html'.format(
+                      self.pass_file.stem)), 'w') as fh_report:
+                fh_report.write(report_template.format(
+                    vega_version=alt.VEGA_VERSION,
+                    vegalite_version=alt.VEGALITE_VERSION,
+                    vegaembed_version=alt.VEGAEMBED_VERSION,
+                    spec1=top_chart.to_json(indent=None),
+                    spec2=len_chart.to_json(indent=None),
+                    spec3=base_chart.to_json(indent=None),
+                    spec4=country_chart.to_json(indent=None),
+                    spec5=city_chart.to_json(indent=None),
+                    spec6=city_gps_chart.to_json(indent=None)
+                ))
+        except Exception as err:
+            print('Failed to generate HTML report: {}'.format(err))
+        ret_dict = {}
+        ret_dict['topx_chart'] = json.loads(top_chart.to_json(indent=None)) if top_chart else None
+        ret_dict['len_chart'] = json.loads(len_chart.to_json(indent=None)) if len_chart else None
+        ret_dict['base_chart'] = json.loads(base_chart.to_json(indent=None)) if base_chart else None
+        ret_dict['country_chart'] = json.loads(country_chart.to_json(indent=None)) if country_chart else None
+        ret_dict['city_chart'] = json.loads(city_chart.to_json(indent=None)) if city_chart else None
+        ret_dict['city_gps_chart'] = json.loads(city_gps_chart.to_json(indent=None)) if city_gps_chart else None
+        return ret_dict
 
 
 class DonutGenerator(object):
@@ -635,57 +671,71 @@ class DonutGenerator(object):
     """
     def __init__(self, source_data):
         # chart config
-        self.outer_colors = ['#CCFFCC', '#FF1919', '#FF884D', '#FF3377']
-        self.inner_colors = ['#66FF66', '#FF1919', '#FF884D', '#FF3377']
-        self.mid_colors = ['#FFFFFF', '#FF1919', '#FF3377', '#FF3377']
-        self.wedgeprops = {'linewidth' : 2, 'edgecolor' : "w" }
-        self.textprops = {'fontweight': 'bold' ,'fontsize':12, 'color': '#BDBDBD'}
+        self.outer_colors = ['#CCFFCC', '#FFE14D', '#FF8C19', '#B3FF66']
+        self.mid_colors = ['#66FF66', '#FF1919', '#FF884D', '#FF3377']
+        self.inner_colors = ['#FFFFFF', '#FF8C19', '#FF1919', '#CC0000', '#FF4019']
+        self.wedgeprops = {'linewidth': 1, 'edgecolor': "w"}
+        self.textprops = {'fontweight': 'bold', 'fontsize': 12, 'color': '#BDBDBD'}
         self.fig, self.ax = plt.subplots(subplot_kw=dict(aspect="auto"))
         self.text_invis = {'visible': False}
         self.source_data = source_data
-        self.fig.set_size_inches(4, 12)
+        self.fig.set_size_inches(7, 14)
 
     def gen_donut(self):
         # overall hashes info chart
         total_other_list = [
             self.source_data['Duplicate Hashes'],
             self.source_data['LM Hashes'],
-            self.source_data['Matched Accounts'],
+            self.source_data['Sensitive Account Hashes'],
             ]
         total_list = [(self.source_data['Total Hashes'] - sum(total_other_list))]
         total_list.extend(total_other_list)
         total_data = pandas.DataFrame({'Total Hashes': total_list})
-        labels=['Standard Account Hashes', 'Duplicate Hashes', 'LM Hashes',
-                'Sensitive Account Hashes']
+        labels = [
+                'Standard Account Hashes: {}'.format(total_list[0]),
+                'Duplicate Hashes: {}'.format(total_list[1]),
+                'LM Hashes: {}'.format(total_list[2]),
+                'Sensitive Account Hashes: {}'.format(total_list[3])
+                ]
         wedges, texts = self.ax.pie(total_data['Total Hashes'], startangle=45,
-                               labels=labels,
-                               colors=self.outer_colors, radius=1.0, labeldistance=1.35,
-                               wedgeprops=self.wedgeprops, textprops=self.text_invis)
+                                    labels=labels,
+                                    colors=self.outer_colors, radius=1.0, labeldistance=1.35,
+                                    wedgeprops=self.wedgeprops, textprops=self.text_invis)
         bbox_props = dict(fc='w', ec='w', lw=7.72, boxstyle='round')
         kw = dict(arrowprops=dict(arrowstyle="-", color="#BDBDBD", lw=2),
                   bbox=bbox_props, zorder=0)
         lab = 0
+        move = 0
         for p in wedges:
-            ang = (p.theta2 - p.theta1)/2. + p.theta1
-            y = np.sin(np.deg2rad(ang))
-            x = np.cos(np.deg2rad(ang))
-            horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
-            connectionstyle = "angle,angleA=0,angleB={}".format(ang)
-            kw["arrowprops"].update({"connectionstyle": connectionstyle})
-            self.ax.annotate('{}: {}'.format(labels[lab], total_data['Total Hashes'][lab]),
-                         color='#BDBDBD', weight='bold',
-                         xy=(x, y),
-                         xytext=(1.65*np.sign(x), 1.3*y),
-                         horizontalalignment=horizontalalignment, **kw)
+            if total_data['Total Hashes'][lab] > 0:
+                ang = (p.theta2 - p.theta1)/2. + p.theta1
+                y = np.sin(np.deg2rad(ang))
+                x = np.cos(np.deg2rad(ang))
+                horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
+                connectionstyle = "angle,angleA=0,angleB={}".format(ang)
+                kw["arrowprops"].update({"connectionstyle": connectionstyle})
+                self.ax.annotate(labels[lab],
+                                 color='#BDBDBD', weight='bold',
+                                 xy=(x, y),
+                                 xytext=(1.65*np.sign(x), (1.3*y)+move),
+                                 horizontalalignment=horizontalalignment, **kw)
+                move += 0.2
             lab += 1
 
         # overview chart
         over_list = [(self.source_data['Total Hashes'] - self.source_data['Total Cracked']), self.source_data['Total Cracked']]
         overview = pandas.DataFrame({'Overview': over_list})
-        wedges= self.ax.pie(overview['Overview'], labels=['Uncracked Hashes', 'Cracked Passwords'],
-                startangle=90, pctdistance=0.88,
-                colors=self.inner_colors, autopct='%1.1f%%', radius=0.70, labeldistance=0.65,
-                wedgeprops=self.wedgeprops, textprops=self.textprops)
+        labels = [
+                'Uncracked Hashes: {}'.format(over_list[0]),
+                'Cracked Passwords: {}'.format(over_list[1])
+                ]
+        textprops = {'fontweight': 'bold', 'fontsize': 12, 'color': '#919191'}
+        wedges, texts, texts1 = self.ax.pie(overview['Overview'], labels=labels,
+                             startangle=90, pctdistance=0.64,
+                             colors=self.mid_colors, autopct='(%1.1f%%)', radius=0.70, labeldistance=0.78,
+                             wedgeprops=self.wedgeprops, textprops=textprops)
+        for t in texts:
+            t.set_horizontalalignment('center')
         bbox_props = dict(fc='w', ec='w', lw=7.72, boxstyle='round')
         kw = dict(arrowprops=dict(arrowstyle="-", color="#BDBDBD", lw=2),
                   bbox=bbox_props, zorder=0, va="center")
@@ -694,65 +744,75 @@ class DonutGenerator(object):
         cracked_other_list = [
             self.source_data['Duplicate Cracked Passwords'],
             self.source_data['Blank Passwords'],
-            self.source_data['Matched Accounts'],
+            self.source_data['Sensitive Passwords Cracked'],
+            self.source_data['Policy Non-compliant Passwords'],
             ]
         cracked_list = [(self.source_data['Total Cracked'] - sum(cracked_other_list))]
         cracked_list.extend(cracked_other_list)
         cracked_data = pandas.DataFrame({'Total Cracked': cracked_list})
-        labels = ['Cracked Passwords', 'Duplicate Passwords', 'Blank Passwords', 'Matched Accounts']
-
+        labels = [
+                'Cracked Passwords: {}'.format(cracked_list[0]),
+                'Duplicate Passwords: {}'.format(cracked_list[1]),
+                'Blank Passwords: {}'.format(cracked_list[2]),
+                'Sensitive Passwords Cracked: {}'.format(cracked_list[3]),
+                'Policy Non-compliant Passwords: {}'.format(cracked_list[4])
+                ]
         wedges, texts, texts1 = self.ax.pie(cracked_data['Total Cracked'], startangle=-45,
-                               labels=labels,
-                               colors=self.mid_colors, autopct='%1.1f%%', radius=0.40, labeldistance=0.25,
-                               wedgeprops=self.wedgeprops, textprops=self.text_invis)
+                                            labels=labels,
+                                            colors=self.inner_colors, autopct='(%1.1f%%)', radius=0.40, labeldistance=0.05,
+                                            wedgeprops=self.wedgeprops, textprops=self.text_invis)
+        for t in texts:
+            t.set_horizontalalignment('left')
         bbox_props = dict(fc='w', ec='w', lw=7.72, boxstyle='round')
         kw = dict(arrowprops=dict(arrowstyle="-", color="#BDBDBD", lw=2),
                   bbox=bbox_props, zorder=0, va="center")
         lab = 0
+        move = 0
         for p in wedges:
-            if labels[lab] != 'Cracked Passwords':
+            if 'Cracked Passwords' not in labels[lab] and cracked_data['Total Cracked'][lab] > 0:
                 ang = (p.theta2 - p.theta1)/2. + p.theta1
                 y = np.sin(np.deg2rad(ang))
                 x = np.cos(np.deg2rad(ang))
-                #ang = np.deg2rad(p.theta1 + p.theta2)/2
-                #y = np.sin(ang)
-                #x = np.cos(ang)
                 connectionstyle = "angle,angleA=0,angleB={}".format(ang)
-                horizontalalignment = "center" if abs(x) < abs(y) else "right" if x < 0 else "left"
-                #horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
-                self.ax.annotate('{}: {}'.format(labels[lab], cracked_data['Total Cracked'][lab]),
+                horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
+                self.ax.annotate(labels[lab],
                              color='#BDBDBD', weight='bold',
-                             #xy=(x, y),
                              xy=(0.4*x, 0.4*y),
-                             xytext=(1.4*x, 1.4*y),
+                             xytext=(1.65*np.sign(x), (1.3*y)+move),
                              horizontalalignment=horizontalalignment, **kw)
                 self.ax.figure.texts.append(self.ax.texts.pop())
+                move += 0.2
             lab += 1
 
         # set the donut
-        circle = plt.Circle((0,0), 0.15, fc='white')
+        circle = plt.Circle((0, 0), 0.15, fc='white')
         self.fig.gca().add_artist(circle)
-        plt.tight_layout()
-        plt.legend(
-                  fontsize=15,
-                  title="Password Analysis Legend",
-                  bbox_to_anchor=(1.4, 0, 0.5, 0.5))
-        plt.title('AD Password Analysis')
-        #plt.show()
-        #plt.savefig(output_file)
+        #plt.tight_layout()
+        handles, labels = self.ax.get_legend_handles_labels()
+        labels.pop(6)
+        handles.pop(6)
+        leg = self.ax.legend(handles, labels)
+        leg._fontsize = 14
+        leg.set_title('Password Analysis Legend')
+        leg.set_bbox_to_anchor((1.4, 0, 0, 0))
+        for text in leg.get_texts():
+            text.set_color('#919191')
+
+        plt.title('AD Password Analysis',
+                  fontdict={'fontsize': 14,
+                            'fontweight': 'bold',
+                            'color': '#BDBDBD'})
         return plt
 
 
 if __name__ == '__main__':
-    import nltk
-    nltk.download('wordnet')
     lang = 'EN'
     cracked_path = Path('../tests/test_customer_domain.cracked')
     hash_path = Path('../tests/test_customer_domain.hashes')
-    report = Report(cracked_path=cracked_path, lang=lang, lists='./lists/', hash_path=hash_path)
+    report = Report(cracked_path=cracked_path,
+                    lang=lang, lists='./lists/', hash_path=hash_path)
+    gen = report.report_gen()
     stats = report.get_stats(match=['admin', 'svc'])
     donut = DonutGenerator(stats)
     donut = donut.gen_donut()
-    gen = report.report_gen()
     donut.savefig('../tests/test_donut.svg', bbox_inches='tight', dpi=500)
-

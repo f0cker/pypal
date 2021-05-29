@@ -39,16 +39,20 @@ Features/Metrics:
 - [x] Top x base words by country
 - [x] Top x base words by name
 - [x] Geomap using location coordinates mapped from matched basewords by location
+- [x] count of passwords based on a country/place
+- [x] top 10 most popular words/name 
+- [x] show users with shared passwords
+- [x] show users with blank passwords
+- [x] how many passwords are non-compliant with policy
+- [x] domain admins etc
 
 Todo:
 
 - [ ] password complexity (character sets)
 - [ ] crack time
 - [ ] count based on a name
-- [ ] count of passwords based on a country/place
 - [ ] based on multiple words
 - [ ] based on common password pattern
-- [ ] top 10 most popular words/name 
 - [ ] top 10 masks
 - [ ] top 10 masks by position in password
 - [ ] top 10 passwords
@@ -57,13 +61,4 @@ Todo:
 - [ ] top 10 end numbers 1 - 6
 - [ ] top 10 most common numerical patterns
 - [ ] Months/Year/Day
-- [ ] show users with shared passwords
-- [ ] show users with blank passwords
 - [ ] remove vega editor link
-
-
-AD dump analysis:
-
-- [ ] how many passwords are non-compliant with policy
-- [ ] domain admins etc
-- [ ] users not-compliant
