@@ -164,7 +164,7 @@ class Report(object):
         """
         print('test')
 
-    def get_stats(self, policy=None, match=None, ):
+    def get_stats(self, policy=None, match=None):
         """
         Load a hash list and cracked password list,
         then return basic information, such as:
@@ -254,7 +254,7 @@ class Report(object):
             stats_dict['Sensitive Account Hashes'] = 0
             stats_dict['Sensitive Passwords Cracked'] = 0
         if policy:
-            if type(policy) == dict:
+            if isinstance(policy, dict):
                 for key, val in policy:
                     if key == 'length':
                         pol_length = merged[merged['Password']].str.len().lt(val).sum()
@@ -673,7 +673,9 @@ class DonutGenerator(object):
         # chart config
         self.outer_colors = ['#CCFFCC', '#FFE14D', '#FF8C19', '#B3FF66']
         self.mid_colors = ['#66FF66', '#FF1919', '#FF884D', '#FF3377']
-        self.inner_colors = ['#FFFFFF', '#FF8C19', '#FF1919', '#CC0000', '#FF4019']
+        #self.mid_colors = ['#66FF66', '#FFB3B3', '#FF884D', '#FF3377']
+        self.inner_colors = ['#FF8C19', '#FF1919', '#CC0000', '#FF4019']
+        #self.inner_colors = ['#FFFFFF', '#FF8C19', '#FF1919', '#CC0000', '#FF4019']
         self.wedgeprops = {'linewidth': 1, 'edgecolor': "w"}
         self.textprops = {'fontweight': 'bold', 'fontsize': 12, 'color': '#BDBDBD'}
         self.fig, self.ax = plt.subplots(subplot_kw=dict(aspect="auto"))
@@ -729,7 +731,8 @@ class DonutGenerator(object):
                 'Uncracked Hashes: {}'.format(over_list[0]),
                 'Cracked Passwords: {}'.format(over_list[1])
                 ]
-        textprops = {'fontweight': 'bold', 'fontsize': 12, 'color': '#919191'}
+        #textprops = {'fontweight': 'bold', 'fontsize': 12, 'color': '#919191'}
+        textprops = {'fontweight': 'bold', 'fontsize': 12, 'color': '#000000'}
         wedges, texts, texts1 = self.ax.pie(overview['Overview'], labels=labels,
                              startangle=90, pctdistance=0.64,
                              colors=self.mid_colors, autopct='(%1.1f%%)', radius=0.70, labeldistance=0.78,
@@ -747,15 +750,16 @@ class DonutGenerator(object):
             self.source_data['Sensitive Passwords Cracked'],
             self.source_data['Policy Non-compliant Passwords'],
             ]
-        cracked_list = [(self.source_data['Total Cracked'] - sum(cracked_other_list))]
-        cracked_list.extend(cracked_other_list)
+        #cracked_list = [(self.source_data['Total Cracked'] - sum(cracked_other_list))]
+        #cracked_list.extend(cracked_other_list)
+        cracked_list = cracked_other_list
         cracked_data = pandas.DataFrame({'Total Cracked': cracked_list})
         labels = [
-                'Cracked Passwords: {}'.format(cracked_list[0]),
-                'Duplicate Passwords: {}'.format(cracked_list[1]),
-                'Blank Passwords: {}'.format(cracked_list[2]),
-                'Sensitive Passwords Cracked: {}'.format(cracked_list[3]),
-                'Policy Non-compliant Passwords: {}'.format(cracked_list[4])
+                #'Cracked Passwords: {}'.format(cracked_list[0]),
+                'Duplicate Passwords: {}'.format(cracked_list[0]),
+                'Blank Passwords: {}'.format(cracked_list[1]),
+                'Sensitive Passwords Cracked: {}'.format(cracked_list[2]),
+                'Policy Non-compliant Passwords: {}'.format(cracked_list[3])
                 ]
         wedges, texts, texts1 = self.ax.pie(cracked_data['Total Cracked'], startangle=-45,
                                             labels=labels,
@@ -781,7 +785,7 @@ class DonutGenerator(object):
                              xytext=(1.65*np.sign(x), (1.3*y)+move),
                              horizontalalignment=horizontalalignment, **kw)
                 self.ax.figure.texts.append(self.ax.texts.pop())
-                move += 0.2
+                move += 0.3
             lab += 1
 
         # set the donut
@@ -806,6 +810,8 @@ class DonutGenerator(object):
 
 
 if __name__ == '__main__':
+    import nltk
+    nltk.download("wordnet")
     lang = 'EN'
     cracked_path = Path('../tests/test_customer_domain.cracked')
     hash_path = Path('../tests/test_customer_domain.hashes')
@@ -815,4 +821,4 @@ if __name__ == '__main__':
     stats = report.get_stats(match=['admin', 'svc'])
     donut = DonutGenerator(stats)
     donut = donut.gen_donut()
-    donut.savefig('../tests/test_donut.svg', bbox_inches='tight', dpi=500)
+    donut.savefig('../tests/test_donut.png', bbox_inches='tight', dpi=500)

@@ -49,6 +49,7 @@ Features/Metrics:
 Todo:
 
 - [ ] password complexity (character sets)
+- [ ] Add additional AD review checks by processing NTDS.dit
 - [ ] crack time
 - [ ] count based on a name
 - [ ] based on multiple words
