@@ -1,15 +1,15 @@
 """"Pypal password analysis report generator"""
 
 from pathlib import Path
-import matplotlib.pyplot as plt
 from nltk.probability import FreqDist
 from nltk.stem import WordNetLemmatizer
-import numpy as np
 from tqdm import tqdm
 from vega_datasets import data
 
 import altair as alt
 import json
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas
 
 try:
@@ -194,7 +194,7 @@ class Report(object):
             'Total Hashes': 88803,
             'Total Cracked': 9045,
             'Duplicate Hashes': 780,
-            'Duplicate Cracked Passwords': 462,
+            'Duplicate Passwords Cracked': 462,
             'Blank Passwords': 3,
             'LM Hashes': 227}
         """
@@ -268,7 +268,7 @@ class Report(object):
         stats_dict['Total Hashes'] = total
         stats_dict['Total Cracked'] = total_cracked
         stats_dict['Duplicate Hashes'] = dupe_count
-        stats_dict['Duplicate Cracked Passwords'] = dupe_pass
+        stats_dict['Duplicate Passwords Cracked'] = dupe_pass
         stats_dict['Blank Passwords'] = blank_count
         stats_dict['LM Hashes'] = lm_count
         with open(self.stats_file, 'w') as fh_stat:
@@ -354,7 +354,7 @@ class Report(object):
         col: String
             Column name for matched word, i.e. country, word etc
 
-        min_score: Float 
+        min_score: Float
             threshold for minimum score, all words scoring
             below this will be marked as unmatched against a
             dictionary word. Default is 0.7 but this needs tweaking
@@ -386,7 +386,7 @@ class Report(object):
 
     def gps_lookup(self, loc):
         """
-        Take location name string (city) and look it up in 
+        Take location name string (city) and look it up in
         the gps list.
 
         Arguments
@@ -397,7 +397,7 @@ class Report(object):
         Returns
         -------
         gps: Tuple
-            (Float, FLoat) representing the gps cooardinates of 
+            (Float, FLoat) representing the gps cooardinates of
             the provided location string
         """
         try:
@@ -734,9 +734,9 @@ class DonutGenerator(object):
         #textprops = {'fontweight': 'bold', 'fontsize': 12, 'color': '#919191'}
         textprops = {'fontweight': 'bold', 'fontsize': 12, 'color': '#000000'}
         wedges, texts, texts1 = self.ax.pie(overview['Overview'], labels=labels,
-                             startangle=90, pctdistance=0.64,
-                             colors=self.mid_colors, autopct='(%1.1f%%)', radius=0.70, labeldistance=0.78,
-                             wedgeprops=self.wedgeprops, textprops=textprops)
+                                            startangle=90, pctdistance=0.64,
+                                            colors=self.mid_colors, autopct='(%1.1f%%)', radius=0.70, labeldistance=0.78,
+                                            wedgeprops=self.wedgeprops, textprops=textprops)
         for t in texts:
             t.set_horizontalalignment('center')
         bbox_props = dict(fc='w', ec='w', lw=7.72, boxstyle='round')
@@ -744,18 +744,14 @@ class DonutGenerator(object):
                   bbox=bbox_props, zorder=0, va="center")
 
         # cracked password chart
-        cracked_other_list = [
-            self.source_data['Duplicate Cracked Passwords'],
+        cracked_list = [
+            self.source_data['Duplicate Passwords Cracked'],
             self.source_data['Blank Passwords'],
             self.source_data['Sensitive Passwords Cracked'],
             self.source_data['Policy Non-compliant Passwords'],
             ]
-        #cracked_list = [(self.source_data['Total Cracked'] - sum(cracked_other_list))]
-        #cracked_list.extend(cracked_other_list)
-        cracked_list = cracked_other_list
         cracked_data = pandas.DataFrame({'Total Cracked': cracked_list})
         labels = [
-                #'Cracked Passwords: {}'.format(cracked_list[0]),
                 'Duplicate Passwords Cracked: {}'.format(cracked_list[0]),
                 'Blank Passwords: {}'.format(cracked_list[1]),
                 'Sensitive Passwords Cracked: {}'.format(cracked_list[2]),
@@ -773,7 +769,7 @@ class DonutGenerator(object):
         lab = 0
         move = 0
         for p in wedges:
-            if 'Cracked Passwords' not in labels[lab] and cracked_data['Total Cracked'][lab] > 0:
+            if cracked_data['Total Cracked'][lab] > 0:
                 ang = (p.theta2 - p.theta1)/2. + p.theta1
                 y = np.sin(np.deg2rad(ang))
                 x = np.cos(np.deg2rad(ang))
@@ -793,8 +789,6 @@ class DonutGenerator(object):
         self.fig.gca().add_artist(circle)
         #plt.tight_layout()
         handles, labels = self.ax.get_legend_handles_labels()
-        labels.pop(6)
-        handles.pop(6)
         leg = self.ax.legend(handles, labels)
         leg._fontsize = 14
         leg.set_title('Password Analysis Legend')
@@ -805,7 +799,7 @@ class DonutGenerator(object):
         plt.title('AD Password Analysis',
                   fontdict={'fontsize': 14,
                             'fontweight': 'bold',
-                            'color': '#BDBDBD'})
+                            'color': '#000000'})
         return plt
 
 
