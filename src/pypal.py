@@ -756,7 +756,7 @@ class DonutGenerator(object):
         cracked_data = pandas.DataFrame({'Total Cracked': cracked_list})
         labels = [
                 #'Cracked Passwords: {}'.format(cracked_list[0]),
-                'Duplicate Passwords: {}'.format(cracked_list[0]),
+                'Duplicate Passwords Cracked: {}'.format(cracked_list[0]),
                 'Blank Passwords: {}'.format(cracked_list[1]),
                 'Sensitive Passwords Cracked: {}'.format(cracked_list[2]),
                 'Policy Non-compliant Passwords: {}'.format(cracked_list[3])
