@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
     setup(
         name='Pypal',
         author='Daniel Turner',
-        version='0.0.1a',
+        version='0.0.1',
         packages=['pypal'],
         package_dir={'pypal': 'src'},
         description='Python port of Pipal for password analytics',
@@ -21,6 +21,7 @@ with open("README.md", "r") as fh:
             'matplotlib==3.1.0',
             'fuzzyset==0.0.19',
             'nltk==3.4.5',
+            'numpy==1.19.5',
             'pandas==0.24.2',
             'tqdm==4.32.2',
             'vega-datasets==0.7.0',
