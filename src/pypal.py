@@ -816,7 +816,7 @@ if __name__ == '__main__':
     hash_path = Path('../tests/test_customer_domain.hashes')
     report = Report(cracked_path=cracked_path,
                     lang=lang, lists='./lists/', hash_path=hash_path)
-    #gen = report.report_gen()
+    gen = report.report_gen()
     stats = report.get_stats(match=['admin', 'svc'], policy={'length': 8})
     donut = DonutGenerator(stats)
     donut = donut.gen_donut()
