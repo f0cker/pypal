@@ -245,9 +245,9 @@ class Report(object):
         if match:
             if type(match) == list:
                 match_count = merged['User'].str.contains('|'.join(match)).sum()
-                stats_dict['Sensitive Account Hashes'] = match_count
+                stats_dict['Sensitive Account Hashes'] = int(match_count)
                 match_pass = merged['Password'][merged['User'].str.contains('|'.join(match))].notna().sum()
-                stats_dict['Sensitive Passwords Cracked'] = match_pass
+                stats_dict['Sensitive Passwords Cracked'] = int(match_pass)
             else:
                 stats_dict['Sensitive Account Hashes'] = 0
                 stats_dict['Sensitive Passwords Cracked'] = 0
@@ -260,7 +260,7 @@ class Report(object):
                     for key in policy:
                         if key == 'length':
                             pol_length = merged[merged['Password'].notna()]['Password'].str.len().lt(policy['length']).sum()
-                            stats_dict['Policy Non-compliant Passwords'] = pol_length
+                            stats_dict['Policy Non-compliant Passwords'] = int(pol_length)
                         else:
                             stats_dict['Policy Non-compliant Passwords'] = 0
                 except Exception as err:
@@ -270,12 +270,12 @@ class Report(object):
                 stats_dict['Policy Non-compliant Passwords'] = 0
         else:
             stats_dict['Policy Non-compliant Passwords'] = 0
-        stats_dict['Total Hashes'] = total
-        stats_dict['Total Cracked'] = total_cracked
-        stats_dict['Duplicate Hashes'] = dupe_count
-        stats_dict['Duplicate Passwords Cracked'] = dupe_pass
-        stats_dict['Blank Passwords'] = blank_count
-        stats_dict['LM Hashes'] = lm_count
+        stats_dict['Total Hashes'] = int(total)
+        stats_dict['Total Cracked'] = int(total_cracked)
+        stats_dict['Duplicate Hashes'] = int(dupe_count)
+        stats_dict['Duplicate Passwords Cracked'] = int(dupe_pass)
+        stats_dict['Blank Passwords'] = int(blank_count)
+        stats_dict['LM Hashes'] = int(lm_count)
         with open(self.stats_file, 'w') as fh_stat:
             fh_stat.write(json.dumps(str(stats_dict)))
         return stats_dict
@@ -816,7 +816,7 @@ if __name__ == '__main__':
     hash_path = Path('../tests/test_customer_domain.hashes')
     report = Report(cracked_path=cracked_path,
                     lang=lang, lists='./lists/', hash_path=hash_path)
-    gen = report.report_gen()
+    #gen = report.report_gen()
     stats = report.get_stats(match=['admin', 'svc'], policy={'length': 8})
     donut = DonutGenerator(stats)
     donut = donut.gen_donut()
