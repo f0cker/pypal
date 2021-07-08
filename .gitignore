@@ -1,10 +1,4 @@
 *.sw*
 *.pyc
 *__pycache__*
-.DS*
-.mypy*
-*egg-info*
-*build*
-*dist*
-.pytest_cache
-tests/test_customer_domain_*
+*Pypal.egg*

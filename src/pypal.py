@@ -234,6 +234,7 @@ class Report(object):
             return False
         stats_dict = {}
         merged = pandas.merge(df_hashes, df_cracked, how='left', on='User')
+        #merged = pandas.merge(df_hashes, df_cracked, how='left')
         dupe_count = merged.duplicated(subset='Hash_x').sum()
         dupe_pass = merged[merged['Password'].notna()].duplicated(subset='Password').sum()
         blank_count = merged['Hash_x'].isin(['31d6cfe0d16ae931b73c59d7e0c089c0']).sum()
@@ -255,12 +256,16 @@ class Report(object):
             stats_dict['Sensitive Passwords Cracked'] = 0
         if policy:
             if isinstance(policy, dict):
-                for key, val in policy:
-                    if key == 'length':
-                        pol_length = merged[merged['Password']].str.len().lt(val).sum()
-                        stats_dict['Policy Non-compliant Passwords'] = pol_length
-                    else:
-                        stats_dict['Policy Non-compliant Passwords'] = 0
+                try:
+                    for key in policy:
+                        if key == 'length':
+                            pol_length = merged[merged['Password'].notna()]['Password'].str.len().lt(policy['length']).sum()
+                            stats_dict['Policy Non-compliant Passwords'] = pol_length
+                        else:
+                            stats_dict['Policy Non-compliant Passwords'] = 0
+                except Exception as err:
+                    print(err)
+                    stats_dict['Policy Non-compliant Passwords'] = 0
             else:
                 stats_dict['Policy Non-compliant Passwords'] = 0
         else:
@@ -812,7 +817,7 @@ if __name__ == '__main__':
     report = Report(cracked_path=cracked_path,
                     lang=lang, lists='./lists/', hash_path=hash_path)
     gen = report.report_gen()
-    stats = report.get_stats(match=['admin', 'svc'])
+    stats = report.get_stats(match=['admin', 'svc'], policy={'length': 8})
     donut = DonutGenerator(stats)
     donut = donut.gen_donut()
     donut.savefig('../tests/test_donut.png', bbox_inches='tight', dpi=500)
