@@ -721,7 +721,7 @@ class DonutGenerator(object):
                 horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
                 connectionstyle = "angle,angleA=0,angleB={}".format(ang)
                 kw["arrowprops"].update({"connectionstyle": connectionstyle})
-                self.ax.annotate(labels[lab],
+                self.ax.annotate(text=labels[lab],
                                  color='#BDBDBD', weight='bold',
                                  xy=(x, y),
                                  xytext=(1.65*np.sign(x), (1.3*y)+move),
@@ -785,6 +785,7 @@ class DonutGenerator(object):
                              xy=(0.4*x, 0.4*y),
                              xytext=(1.65*np.sign(x), (1.3*y)+move),
                              horizontalalignment=horizontalalignment, **kw)
+                print(dir(self.ax.texts))
                 self.ax.figure.texts.append(self.ax.texts.pop())
                 move += 0.3
             lab += 1
