@@ -34,7 +34,7 @@ with open("README.md", "r") as fh:
 		'nltk==3.8.1',
 		'numpy==1.24.4',
 		'pandas==2.0.3',
-		'Pillow==10.0.0',
+		'Pillow==10.0.1',
 		'pkgutil-resolve-name==1.3.10',
 		'Pypal==0.0.1',
 		'pyparsing==3.1.0',
